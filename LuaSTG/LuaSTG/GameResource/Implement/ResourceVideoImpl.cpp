@@ -9,9 +9,9 @@
 
 namespace {
 	double normalize_time(double value, double duration) {
-		value = std::max(0.0, value);
+		value = value < 0.0 ? 0.0 : value;
 		if (duration > 0.0) {
-			value = std::min(value, duration);
+			value = value < duration ? value : duration;
 		}
 		return value;
 	}
@@ -228,7 +228,7 @@ namespace luastg {
 			return;
 		}
 
-		m_time += std::max(0.0, delta_seconds);
+		m_time += delta_seconds < 0.0 ? 0.0 : delta_seconds;
 		if (m_duration > 0.0 && m_time >= m_duration) {
 			if (m_loop) {
 				m_time = std::fmod(m_time, m_duration);

@@ -21,8 +21,11 @@ namespace {
 		return static_cast<double>(value) / 10000000.0;
 	}
 	constexpr LONGLONG seconds_to_hns(double const value) noexcept {
-		return static_cast<LONGLONG>(std::max(0.0, value) * 10000000.0);
+		return static_cast<LONGLONG>((value < 0.0 ? 0.0 : value) * 10000000.0);
 	}
+	constexpr DWORD source_reader_all_streams = static_cast<DWORD>(MF_SOURCE_READER_ALL_STREAMS);
+	constexpr DWORD source_reader_first_video_stream = static_cast<DWORD>(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+	constexpr DWORD source_reader_media_source = static_cast<DWORD>(MF_SOURCE_READER_MEDIASOURCE);
 
 	HRESULT ensureMediaFoundationStarted() {
 		static std::once_flag flag;
@@ -78,7 +81,8 @@ namespace {
 				return STG_E_INVALIDPOINTER;
 			}
 			size_t const available = m_position < m_data->size() ? m_data->size() - m_position : 0;
-			size_t const read_size = std::min<size_t>(available, cb);
+			size_t const request_size = static_cast<size_t>(cb);
+			size_t const read_size = available < request_size ? available : request_size;
 			if (read_size > 0) {
 				std::memcpy(pv, static_cast<uint8_t const*>(m_data->data()) + m_position, read_size);
 				m_position += read_size;
@@ -128,7 +132,7 @@ namespace {
 			uint8_t buffer[4096]{};
 			ULARGE_INTEGER remaining = cb;
 			while (remaining.QuadPart > 0) {
-				ULONG const request = static_cast<ULONG>(std::min<ULONGLONG>(remaining.QuadPart, sizeof(buffer)));
+				ULONG const request = static_cast<ULONG>(remaining.QuadPart < sizeof(buffer) ? remaining.QuadPart : sizeof(buffer));
 				ULONG read = 0;
 				HRESULT hr = Read(buffer, request, &read);
 				if (FAILED(hr)) {
@@ -230,8 +234,8 @@ namespace core {
 			return false;
 		}
 
-		m_reader->SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS, FALSE);
-		HRESULT hr = m_reader->SetStreamSelection(MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
+		m_reader->SetStreamSelection(source_reader_all_streams, FALSE);
+		HRESULT hr = m_reader->SetStreamSelection(source_reader_first_video_stream, TRUE);
 		if (FAILED(hr)) {
 			Logger::error("[core] failed to select first video stream (HRESULT=0x{:08X})", static_cast<uint32_t>(hr));
 			return false;
@@ -244,7 +248,7 @@ namespace core {
 		}
 		media_type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
 		media_type->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
-		hr = m_reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, media_type.Get());
+		hr = m_reader->SetCurrentMediaType(source_reader_first_video_stream, nullptr, media_type.Get());
 		if (FAILED(hr)) {
 			Logger::error("[core] failed to request RGB32 video output (HRESULT=0x{:08X})", static_cast<uint32_t>(hr));
 			return false;
@@ -255,7 +259,7 @@ namespace core {
 
 		PROPVARIANT duration;
 		PropVariantInit(&duration);
-		if (SUCCEEDED(m_reader->GetPresentationAttribute(MF_SOURCE_READER_MEDIASOURCE, MF_PD_DURATION, &duration)) && duration.vt == VT_UI8) {
+		if (SUCCEEDED(m_reader->GetPresentationAttribute(source_reader_media_source, MF_PD_DURATION, &duration)) && duration.vt == VT_UI8) {
 			m_duration = hns_to_seconds(static_cast<LONGLONG>(duration.uhVal.QuadPart));
 		}
 		PropVariantClear(&duration);
@@ -306,7 +310,7 @@ namespace core {
 
 	bool VideoDecoderMediaFoundation::updateMediaType() {
 		Microsoft::WRL::ComPtr<IMFMediaType> media_type;
-		HRESULT hr = m_reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, media_type.GetAddressOf());
+		HRESULT hr = m_reader->GetCurrentMediaType(source_reader_first_video_stream, media_type.GetAddressOf());
 		if (FAILED(hr)) {
 			Logger::error("[core] failed to query current video media type (HRESULT=0x{:08X})", static_cast<uint32_t>(hr));
 			return false;
@@ -347,7 +351,7 @@ namespace core {
 			LONGLONG timestamp = 0;
 			Microsoft::WRL::ComPtr<IMFSample> sample;
 			HRESULT hr = m_reader->ReadSample(
-				MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+				source_reader_first_video_stream,
 				0,
 				&stream_index,
 				&flags,
@@ -399,7 +403,7 @@ namespace core {
 
 			for (uint32_t y = 0; y < m_height; y += 1) {
 				auto* const row_destination = destination + static_cast<size_t>(y) * destination_pitch;
-				uint32_t const copy_pitch = std::min(destination_pitch, source_pitch_abs);
+				uint32_t const copy_pitch = destination_pitch < source_pitch_abs ? destination_pitch : source_pitch_abs;
 				std::memcpy(row_destination, row_source, copy_pitch);
 				if (copy_pitch < destination_pitch) {
 					std::memset(row_destination + copy_pitch, 0, destination_pitch - copy_pitch);
