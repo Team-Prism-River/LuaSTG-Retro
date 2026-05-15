@@ -186,13 +186,16 @@ namespace luastg
         float const hscale = (float)w_size.x / (float)c_size.x;
         float const vscale = (float)w_size.y / (float)c_size.y;
 
-        if (GetAppModel()->getSwapChain()->getScalingMode() == core::Graphics::SwapChainScalingMode::Stretch)
+        auto const scaling_mode = GetAppModel()->getSwapChain()->getScalingMode();
+        if (scaling_mode == core::Graphics::SwapChainScalingMode::Stretch)
         {
             return core::Vector4F(0.0f, 0.0f, 1.0f / hscale, 1.0f / vscale);
         }
         else
         {
-            float const scale = std::min(hscale, vscale);
+            float scale = std::min(hscale, vscale);
+            if (scaling_mode == core::Graphics::SwapChainScalingMode::IntegerAspectRatio && scale >= 1.0f)
+                scale = static_cast<float>(static_cast<uint32_t>(scale));
             float const sizew = scale * (float)c_size.x;
             float const sizeh = scale * (float)c_size.y;
             float const dx = ((float)w_size.x - sizew) * 0.5f;

@@ -20,6 +20,7 @@ namespace core::Graphics
 	{
 		Stretch,
 		AspectRatio,
+		IntegerAspectRatio,
 	};
 
 	struct ISwapChainEventListener

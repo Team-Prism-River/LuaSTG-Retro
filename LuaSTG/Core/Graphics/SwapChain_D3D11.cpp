@@ -97,7 +97,13 @@ namespace core::Graphics
 		}
 	}
 
-	inline bool makeLetterboxing(Vector2U rect, Vector2U inner_rect, DXGI_MATRIX_3X2_F& mat)
+	inline bool canIntegerScale(Vector2U rect, Vector2U inner_rect)
+	{
+		double const hscale = (double)rect.x / (double)inner_rect.x;
+		double const vscale = (double)rect.y / (double)inner_rect.y;
+		return std::min(hscale, vscale) >= 1.0;
+	}
+	inline bool makeLetterboxing(Vector2U rect, Vector2U inner_rect, DXGI_MATRIX_3X2_F& mat, bool integer_scaling = false)
 	{
 		if (rect == inner_rect)
 		{
@@ -107,7 +113,11 @@ namespace core::Graphics
 		{
 			double const hscale = (double)rect.x / (double)inner_rect.x;
 			double const vscale = (double)rect.y / (double)inner_rect.y;
-			double const scale = std::min(hscale, vscale);
+			double scale = std::min(hscale, vscale);
+			if (integer_scaling && scale >= 1.0)
+			{
+				scale = (double)(uint32_t)scale;
+			}
 			double const width = scale * (double)inner_rect.x;
 			double const height = scale * (double)inner_rect.y;
 			double const x = ((double)rect.x - width) * 0.5;
@@ -1397,8 +1407,8 @@ namespace core::Graphics
 		HRGet = dcomp_visual_swap_chain->SetContent(dxgi_swapchain.Get());
 		HRCheckCallReturnBool("IDCompositionVisual2::SetContent");
 		
-		HRGet = dcomp_visual_swap_chain->SetBitmapInterpolationMode(DCOMPOSITION_BITMAP_INTERPOLATION_MODE_LINEAR); // TODO: 支持改为临近缩放
-		HRCheckCallReturnBool("IDCompositionVisual2::SetBitmapInterpolationMode -> DCOMPOSITION_BITMAP_INTERPOLATION_MODE_LINEAR");
+		HRGet = dcomp_visual_swap_chain->SetBitmapInterpolationMode(DCOMPOSITION_BITMAP_INTERPOLATION_MODE_LINEAR);
+		HRCheckCallReturnBool("IDCompositionVisual2::SetBitmapInterpolationMode");
 
 		// 构建视觉树
 
@@ -1497,9 +1507,18 @@ namespace core::Graphics
 		auto const window_size_u = Vector2U(
 			(uint32_t)(rc.right - rc.left),
 			(uint32_t)(rc.bottom - rc.top));
+		auto const swap_chain_size_u = Vector2U(desc1.Width, desc1.Height);
+		bool const use_integer_scaling = (
+			m_scaling_mode == SwapChainScalingMode::IntegerAspectRatio
+			&& canIntegerScale(window_size_u, swap_chain_size_u));
 
 		// 让背景铺满整个画面（由 Window Class 的背景来处理）
 
+		HRGet = dcomp_visual_swap_chain->SetBitmapInterpolationMode(
+			use_integer_scaling
+			? DCOMPOSITION_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR
+			: DCOMPOSITION_BITMAP_INTERPOLATION_MODE_LINEAR);
+		HRCheckCallReturnBool("IDCompositionVisual2::SetBitmapInterpolationMode");
 
 		// 设置交换链内容内接放大
 
@@ -1514,7 +1533,11 @@ namespace core::Graphics
 		else
 		{
 			DXGI_MATRIX_3X2_F mat{};
-			if (makeLetterboxing(window_size_u, Vector2U(desc1.Width, desc1.Height), mat))
+			if (makeLetterboxing(
+				window_size_u,
+				swap_chain_size_u,
+				mat,
+				use_integer_scaling))
 			{
 				D2D_MATRIX_3X2_F const mat_d2d = {
 					mat._11, mat._12,
@@ -1884,7 +1907,8 @@ namespace core::Graphics
 		return m_scaling_renderer.UpdateTransform(
 			m_canvas_d3d11_srv.Get(),
 			m_swap_chain_d3d11_rtv.Get(),
-			m_scaling_mode == SwapChainScalingMode::Stretch
+			m_scaling_mode == SwapChainScalingMode::Stretch,
+			m_scaling_mode == SwapChainScalingMode::IntegerAspectRatio
 		);
 	}
 	bool SwapChain_D3D11::presentLetterBoxingRenderer()

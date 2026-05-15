@@ -36,13 +36,14 @@ namespace core::Graphics::Direct3D11
 		Microsoft::WRL::ComPtr<ID3D11PixelShader> d3d11_pixel_shader;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> d3d11_depth_stencil_state;
 		Microsoft::WRL::ComPtr<ID3D11BlendState> d3d11_blend_state;
+		bool use_point_sampler{ false };
 	private:
 		bool CreateResource();
 		void DestroyResource();
 	public:
 		bool AttachDevice(ID3D11Device* device);
 		void DetachDevice();
-		bool UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool stretch = false);
+		bool UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool stretch = false, bool integer_scaling = false);
 		bool Draw(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool clear_rtv);
 	public:
 		LetterBoxingRenderer();
