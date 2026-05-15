@@ -236,7 +236,7 @@ namespace core::Graphics::Direct3D11
 		d3d11_device.Reset();
 		d3d11_device_context.Reset();
 	}
-	bool LetterBoxingRenderer::UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool stretch)
+	bool LetterBoxingRenderer::UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool stretch, bool integer_scaling)
 	{
 		assert(srv);
 		assert(rtv);
@@ -245,6 +245,7 @@ namespace core::Graphics::Direct3D11
 		assert(d3d11_constant_buffer);
 
 		HRNew;
+		use_point_sampler = false;
 
 		// info
 
@@ -280,7 +281,12 @@ namespace core::Graphics::Direct3D11
 
 			float const scale_w = window_w / canvas_w;
 			float const scale_h = window_h / canvas_h;
-			float const scale = std::min(scale_w, scale_h);
+			float scale = std::min(scale_w, scale_h);
+			if (integer_scaling && scale >= 1.0f)
+			{
+				scale = static_cast<float>(static_cast<uint32_t>(scale));
+				use_point_sampler = true;
+			}
 
 			float const draw_w = canvas_w * scale;
 			float const draw_h = canvas_h * scale;
@@ -392,7 +398,9 @@ namespace core::Graphics::Direct3D11
 		assert(srv);
 		assert(d3d11_pixel_shader);
 
-		ID3D11SamplerState* sampler_state_list[1] = { d3d11_sampler_state_linear.Get() };
+		ID3D11SamplerState* sampler_state_list[1] = {
+			use_point_sampler ? d3d11_sampler_state_point.Get() : d3d11_sampler_state_linear.Get()
+		};
 		d3d11_device_context->PSSetSamplers(0, 1, sampler_state_list);
 		ID3D11ShaderResourceView* shader_resource_view_list[1] = { srv };
 		d3d11_device_context->PSSetShaderResources(0, 1, shader_resource_view_list);
