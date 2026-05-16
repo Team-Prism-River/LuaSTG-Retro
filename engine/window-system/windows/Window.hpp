@@ -33,7 +33,7 @@ namespace core {
 
         INT_PTR win32_window_icon_id{ /* IDI_APPICON THIS IS A HACK */ 101 };
 
-        std::string win32_window_text{ "LuaSTG Sub" };
+        std::string win32_window_text{ "LuaSTG Retro" };
         std::array<wchar_t, 512> win32_window_text_w{};
 
         WindowCursor m_cursor{ WindowCursor::Arrow };
