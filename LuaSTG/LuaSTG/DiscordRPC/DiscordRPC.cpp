@@ -33,6 +33,15 @@ namespace luastg::DiscordRPC
 		return true;
 	}
 
+	bool IsInitialized()
+	{
+#ifdef LUASTG_DISCORD_RPC_ENABLE
+		return g_initialized;
+#else
+		return false;
+#endif
+	}
+
 	void RunCallbacks()
 	{
 #ifdef LUASTG_DISCORD_RPC_ENABLE
