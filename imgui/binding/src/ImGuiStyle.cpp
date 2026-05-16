@@ -136,7 +136,6 @@ namespace imgui::binding {
 			GET_SCALAR(GrabMinSize);
 			GET_SCALAR(GrabRounding);
 			GET_SCALAR(LogSliderDeadzone);
-			GET_SCALAR(ImageRounding);
 			GET_SCALAR(ImageBorderSize);
 			GET_SCALAR(TabRounding);
 			GET_SCALAR(TabBorderSize);
@@ -154,7 +153,6 @@ namespace imgui::binding {
 			GET_SCALAR(DragDropTargetRounding);
 			GET_SCALAR(DragDropTargetBorderSize);
 			GET_SCALAR(DragDropTargetPadding);
-			GET_SCALAR(ColorMarkerSize);
 			GET_FLAG(ColorButtonPosition);
 			GET_VEC2(ButtonTextAlign);
 			GET_VEC2(SelectableTextAlign);
@@ -293,7 +291,6 @@ namespace imgui::binding {
 			SET_SCALAR(GrabMinSize);
 			SET_SCALAR(GrabRounding);
 			SET_SCALAR(LogSliderDeadzone);
-			SET_SCALAR(ImageRounding);
 			SET_SCALAR(ImageBorderSize);
 			SET_SCALAR(TabRounding);
 			SET_SCALAR(TabBorderSize);
@@ -311,7 +308,6 @@ namespace imgui::binding {
 			SET_SCALAR(DragDropTargetRounding);
 			SET_SCALAR(DragDropTargetBorderSize);
 			SET_SCALAR(DragDropTargetPadding);
-			SET_SCALAR(ColorMarkerSize);
 			SET_FLAG(ColorButtonPosition);
 			SET_VEC2(ButtonTextAlign);
 			SET_VEC2(SelectableTextAlign);

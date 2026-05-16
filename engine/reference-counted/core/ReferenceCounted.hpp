@@ -2,7 +2,8 @@
 #include <cstdint>
 #include "core/UUID.hpp"
 
-#define CORE_INTERFACE struct __declspec(novtable)
+#define CORE_NO_VIRTUAL_TABLE __declspec(novtable)
+#define CORE_INTERFACE struct CORE_NO_VIRTUAL_TABLE
 
 #define CORE_INTERFACE_ID(NAME, ID) template<> constexpr InterfaceId getInterfaceId<NAME>() { return UUID::parse(ID); }
 

@@ -68,6 +68,7 @@ add_library(imgui_impl_dx11 STATIC)
 luastg_target_common_options(imgui_impl_dx11)
 target_include_directories(imgui_impl_dx11 PUBLIC
     backend
+    ${CMAKE_SOURCE_DIR}/LuaSTG/Shader/generated
 )
 target_sources(imgui_impl_dx11 PRIVATE
     #imgui/backends/imgui_impl_dx11.h
