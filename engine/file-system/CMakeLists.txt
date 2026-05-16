@@ -12,7 +12,7 @@ target_link_libraries(${lib_name} PRIVATE options_compile_utf8)
 target_link_libraries(${lib_name} PUBLIC
     utf8
     minizip_ng
-    zlib_ng
+    zlib-ng::zlibstatic
     Core.ReferenceCounted
     Core.String
     Core.Logging
