@@ -241,6 +241,7 @@ target_link_libraries(LuaSTG PRIVATE
 
 if (LUASTG_DISCORD_RPC_ENABLE)
     target_link_libraries(LuaSTG PRIVATE discord-rpc)
+    target_include_directories(LuaSTG PRIVATE ${CMAKE_SOURCE_DIR}/external/discord-rpc/include)
     message(STATUS "[LuaSTG] Link: discord-rpc")
 endif ()
 

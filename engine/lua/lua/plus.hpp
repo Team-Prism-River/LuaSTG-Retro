@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 #include <optional>
+#include <type_traits>
 #include "lua.hpp"
 
 namespace lua {
@@ -10,8 +11,9 @@ namespace lua {
 		int32_t value{};
 
 		stack_index_t() = default;
-		constexpr stack_index_t(int32_t const index) : value(index) {}
-		constexpr stack_index_t(size_t const index) : value(static_cast<int32_t>(index)) {}
+		template<typename T>
+			requires (std::is_integral_v<T> && !std::is_same_v<std::remove_cv_t<T>, bool>)
+		constexpr stack_index_t(T const index) : value(static_cast<int32_t>(index)) {}
 
 		bool operator>(int32_t const right) const {
 			return value > right;

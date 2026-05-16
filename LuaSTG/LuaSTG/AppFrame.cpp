@@ -362,66 +362,7 @@ void AppFrame::onDeviceChange()
 	m_window_active_changed.fetch_or(0x4);
 }
 
-bool AppFrame::onCreate() { return true; }
-void AppFrame::onBeforeUpdate() {
-	const auto frame_statistics_index = (m_frame_statistics_index + 1) % 2;
-	auto& d = m_frame_statistics[frame_statistics_index];
-
-	{
-		core::ScopeTimer t(&d.wait_time);
-		if (m_swap_chain) {
-			m_swap_chain->waitFrameLatency();
-		}
-		m_frame_rate_controller->update();
-	}
-
-	m_fFPS = 1.0 / m_frame_rate_controller->getStatistics()->getDuration(0);
-	m_fAvgFPS = 1.0 / m_frame_rate_controller->getStatistics()->getAverage(10);
-	m_frame_rate_controller->setFrameRate(m_target_fps);
-	m_message_timer = core::ScopeTimer(&m_message_time);
-}
-bool AppFrame::onUpdate() {
-	m_message_timer = core::ScopeTimer();
-
-	const auto frame_statistics_index = (m_frame_statistics_index + 1) % 2;
-	auto& d = m_frame_statistics[frame_statistics_index];
-
-	const auto render_statistics_index = (m_render_statistics_index + 1) % m_render_statistics.size();
-	auto& r = m_render_statistics[render_statistics_index];
-
-	{
-		core::ScopeTimer t(&d.update_time);
-		if (!onUpdateInternal()) {
-			return false;
-		}
-	}
-
-	{
-		core::ScopeTimer t(&d.render_time);
-		r.begin();
-		m_swap_chain->applyRenderAttachment();
-		m_swap_chain->clearRenderAttachment();
-		const auto result = onRenderInternal();
-		r.end();
-		if (!result) {
-			return false;
-		}
-	}
-
-	{
-		core::ScopeTimer t(&d.present_time);
-		m_swap_chain->present();
-	}
-
-	d.update_time += m_message_time;
-	d.total_time = d.wait_time + d.update_time + d.render_time + d.present_time;
-	m_frame_statistics_index = frame_statistics_index; // move next
-	m_render_statistics_index = render_statistics_index;
-	return true;
-}
-void AppFrame::onDestroy() {}
-
-bool AppFrame::onUpdateInternal()
+bool AppFrame::onUpdate()
 {
 	bool result = true;
 
