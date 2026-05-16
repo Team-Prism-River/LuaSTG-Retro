@@ -97,39 +97,6 @@ namespace core::Graphics
 		}
 	}
 
-	inline bool canIntegerScale(Vector2U rect, Vector2U inner_rect)
-	{
-		double const hscale = (double)rect.x / (double)inner_rect.x;
-		double const vscale = (double)rect.y / (double)inner_rect.y;
-		return std::min(hscale, vscale) >= 1.0;
-	}
-	inline bool makeLetterboxing(Vector2U rect, Vector2U inner_rect, DXGI_MATRIX_3X2_F& mat, bool integer_scaling = false)
-	{
-		if (rect == inner_rect)
-		{
-			return false; // 不需要
-		}
-		else
-		{
-			double const hscale = (double)rect.x / (double)inner_rect.x;
-			double const vscale = (double)rect.y / (double)inner_rect.y;
-			double scale = std::min(hscale, vscale);
-			if (integer_scaling && scale >= 1.0)
-			{
-				scale = (double)(uint32_t)scale;
-			}
-			double const width = scale * (double)inner_rect.x;
-			double const height = scale * (double)inner_rect.y;
-			double const x = ((double)rect.x - width) * 0.5;
-			double const y = ((double)rect.y - height) * 0.5;
-			mat = DXGI_MATRIX_3X2_F{
-				FLOAT(scale), 0.0f,
-				0.0f, FLOAT(scale),
-				FLOAT(x), FLOAT(y),
-			};
-			return true;
-		}
-	}
 	inline DXGI_SWAP_CHAIN_DESC1 getDefaultSwapChainInfo7()
 	{
 		return DXGI_SWAP_CHAIN_DESC1{
@@ -1508,14 +1475,12 @@ namespace core::Graphics
 			(uint32_t)(rc.right - rc.left),
 			(uint32_t)(rc.bottom - rc.top));
 		auto const swap_chain_size_u = Vector2U(desc1.Width, desc1.Height);
-		bool const use_integer_scaling = (
-			m_scaling_mode == SwapChainScalingMode::IntegerAspectRatio
-			&& canIntegerScale(window_size_u, swap_chain_size_u));
+		auto const layout = makeSwapChainPresentationLayout(window_size_u, swap_chain_size_u, m_scaling_mode);
 
 		// 让背景铺满整个画面（由 Window Class 的背景来处理）
 
 		HRGet = dcomp_visual_swap_chain->SetBitmapInterpolationMode(
-			use_integer_scaling
+			layout.use_point_filter
 			? DCOMPOSITION_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR
 			: DCOMPOSITION_BITMAP_INTERPOLATION_MODE_LINEAR);
 		HRCheckCallReturnBool("IDCompositionVisual2::SetBitmapInterpolationMode");
@@ -1525,24 +1490,19 @@ namespace core::Graphics
 		if (m_scaling_mode == SwapChainScalingMode::Stretch)
 		{
 			auto const mat_d2d = D2D1::Matrix3x2F::Scale(
-				(float)window_size_u.x / (float)desc1.Width,
-				(float)window_size_u.y / (float)desc1.Height);
+				layout.scale.x,
+				layout.scale.y);
 			HRGet = dcomp_visual_swap_chain->SetTransform(mat_d2d);
 			HRCheckCallReturnBool("IDCompositionVisual2::SetTransform");
 		}
 		else
 		{
-			DXGI_MATRIX_3X2_F mat{};
-			if (makeLetterboxing(
-				window_size_u,
-				swap_chain_size_u,
-				mat,
-				use_integer_scaling))
+			if (layout.offset.x != 0.0f || layout.offset.y != 0.0f || layout.scale.x != 1.0f || layout.scale.y != 1.0f)
 			{
 				D2D_MATRIX_3X2_F const mat_d2d = {
-					mat._11, mat._12,
-					mat._21, mat._22,
-					mat._31, mat._32,
+					layout.scale.x, 0.0f,
+					0.0f, layout.scale.y,
+					layout.offset.x, layout.offset.y,
 				};
 				HRGet = dcomp_visual_swap_chain->SetTransform(mat_d2d);
 				HRCheckCallReturnBool("IDCompositionVisual2::SetTransform");
@@ -1904,11 +1864,21 @@ namespace core::Graphics
 		assert(m_canvas_d3d11_srv);
 		assert(m_swap_chain_d3d11_rtv);
 
+		HRNew;
+
+		DXGI_SWAP_CHAIN_DESC1 desc1 = {};
+		HRGet = dxgi_swapchain->GetDesc1(&desc1);
+		HRCheckCallReturnBool("IDXGISwapChain1::GetDesc1");
+
+		auto const layout = makeSwapChainPresentationLayout(
+			Vector2U(desc1.Width, desc1.Height),
+			m_canvas_size,
+			m_scaling_mode);
+
 		return m_scaling_renderer.UpdateTransform(
 			m_canvas_d3d11_srv.Get(),
 			m_swap_chain_d3d11_rtv.Get(),
-			m_scaling_mode == SwapChainScalingMode::Stretch,
-			m_scaling_mode == SwapChainScalingMode::IntegerAspectRatio
+			layout
 		);
 	}
 	bool SwapChain_D3D11::presentLetterBoxingRenderer()

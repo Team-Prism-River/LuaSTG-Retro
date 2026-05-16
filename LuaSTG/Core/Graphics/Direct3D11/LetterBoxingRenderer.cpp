@@ -1,4 +1,5 @@
 #include "Core/Graphics/Direct3D11/LetterBoxingRenderer.hpp"
+#include "Core/Graphics/SwapChain.hpp"
 #include "Core/i18n.hpp"
 
 #define HRNew HRESULT hr = S_OK;
@@ -236,7 +237,7 @@ namespace core::Graphics::Direct3D11
 		d3d11_device.Reset();
 		d3d11_device_context.Reset();
 	}
-	bool LetterBoxingRenderer::UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, bool stretch, bool integer_scaling)
+	bool LetterBoxingRenderer::UpdateTransform(ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv, SwapChainPresentationLayout const& layout)
 	{
 		assert(srv);
 		assert(rtv);
@@ -245,7 +246,7 @@ namespace core::Graphics::Direct3D11
 		assert(d3d11_constant_buffer);
 
 		HRNew;
-		use_point_sampler = false;
+		use_point_sampler = layout.use_point_filter;
 
 		// info
 
@@ -259,45 +260,15 @@ namespace core::Graphics::Direct3D11
 		float const window_w = float(rtv_res_tex_info.Width);
 		float const window_h = float(rtv_res_tex_info.Height);
 
-		if (stretch)
-		{
-			// stretch
+		float const draw_x = layout.offset.x;
+		float const draw_y = layout.offset.y;
+		float const draw_w = layout.size.x;
+		float const draw_h = layout.size.y;
 
-			float const _ = 0.0f;
-
-			vertex_buffer[0] = { 0.0f + _, window_h, 0.0f, 0.0f };
-			vertex_buffer[1] = { window_w, window_h, 1.0f, 0.0f };
-			vertex_buffer[2] = { window_w, 0.0f + _, 1.0f, 1.0f };
-			vertex_buffer[3] = { 0.0f + _, 0.0f + _, 0.0f, 1.0f };
-		}
-		else
-		{
-			// letter boxing
-
-			float const ______ = 0.0f;
-
-			float const canvas_w = float(srv_res_tex_info.Width);
-			float const canvas_h = float(srv_res_tex_info.Height);
-
-			float const scale_w = window_w / canvas_w;
-			float const scale_h = window_h / canvas_h;
-			float scale = std::min(scale_w, scale_h);
-			if (integer_scaling && scale >= 1.0f)
-			{
-				scale = static_cast<float>(static_cast<uint32_t>(scale));
-				use_point_sampler = true;
-			}
-
-			float const draw_w = canvas_w * scale;
-			float const draw_h = canvas_h * scale;
-			float const draw_x = (window_w - draw_w) * 0.5f;
-			float const draw_y = (window_h - draw_h) * 0.5f;
-
-			vertex_buffer[0] = { draw_x + ______, draw_y + draw_h, 0.0f, 0.0f };
-			vertex_buffer[1] = { draw_x + draw_w, draw_y + draw_h, 1.0f, 0.0f };
-			vertex_buffer[2] = { draw_x + draw_w, draw_y + ______, 1.0f, 1.0f };
-			vertex_buffer[3] = { draw_x + ______, draw_y + ______, 0.0f, 1.0f };
-		}
+		vertex_buffer[0] = { draw_x, draw_y + draw_h, 0.0f, 0.0f };
+		vertex_buffer[1] = { draw_x + draw_w, draw_y + draw_h, 1.0f, 0.0f };
+		vertex_buffer[2] = { draw_x + draw_w, draw_y, 1.0f, 1.0f };
+		vertex_buffer[3] = { draw_x, draw_y, 0.0f, 1.0f };
 		
 		D3D11_MAPPED_SUBRESOURCE vertex_data_range = {};
 		HRGet = d3d11_device_context->Map(d3d11_vertex_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &vertex_data_range);
